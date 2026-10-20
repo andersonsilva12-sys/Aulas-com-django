@@ -293,10 +293,9 @@ Nenhuma abordagem é sempre melhor. FBVs costumam ser diretas para iniciantes e 
 
 ## 🧪 8. Exercícios para a turma
 
-1. Adicione uma rota `/sobre/` com uma FBV e um template próprio.
-2. Inclua na listagem a descrição de cada item.
-3. Altere a view de detalhes para exibir uma mensagem amigável de retorno à lista.
-4. Experimente acessar um identificador inexistente e observe o status 404.
-5. Compare a quantidade de código necessária para acrescentar uma funcionalidade simples à FBV e à CBV.
+1. Inclua na FBV de lista_itens a descrição de cada item.
+2. Altere a view detalhe_item para retornar uma mensagem e exiba-a abaixo da descrição do item no template item_detail.
+3. Adicione uma rota `/sobre/` com uma view de um tipo a sua escolha e um template próprio respectivo.
+4. Compare a quantidade de linhas de código necessária para acrescentar uma funcionalidade simples à FBV e à CBV.
 
 ---
