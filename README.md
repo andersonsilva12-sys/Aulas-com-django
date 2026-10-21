@@ -1,19 +1,17 @@
 # 🐍 Aula 3 — Views e URLs no Django
 
-Este guia dá continuidade ao tutorial de introdução ao Django disponível no [README principal](./README.md). Nesta aula, vamos entender como o Django recebe uma requisição, encontra uma rota e executa uma **view** para devolver uma resposta.
+Este guia dá continuidade à sequência de estudos de Django. Nesta aula, vamos entender como o Django recebe uma requisição, encontra uma rota e executa uma **view** para devolver uma resposta.
 
-Ao final, o projeto terá uma página inicial, uma listagem de itens feita de duas formas — **Function-Based View (FBV)** e **Class-Based View (CBV)** — e uma página de detalhes.
+Ao final, o projeto terá uma página inicial, uma listagem de autores feita com **Class-Based View (CBV)** e uma página de detalhes de livro feita com **Function-Based View (FBV)**.
 
 ## 📚 Sumário
 
 - [🎯 1. Objetivos da aula](#-1-objetivos-da-aula)
 - [🔁 2. Fluxo de uma requisição](#-2-fluxo-de-uma-requisição)
 - [🧭 3. Configurando as URLs](#-3-configurando-as-urls)
-- [🧩 4. Criando as views](#-4-criando-as-views)
-- [🖼️ 5. Criando os templates](#️-5-criando-os-templates)
-- [▶️ 6. Executando e testando](#️-6-executando-e-testando)
-- [⚖️ 7. FBV e CBV: diferença prática](#️-7-fbv-e-cbv-diferença-prática)
-- [🧪 8. Exercícios para a turma](#-8-exercícios-para-a-turma)
+- [🪜 4. Construindo a aplicação passo a passo](#-4-construindo-a-aplicação-passo-a-passo)
+- [⚖️ 5. Revisão: FBV e CBV](#️-5-revisão-fbv-e-cbv)
+- [🧪 6. Exercício e exploração](#-6-exercício-e-exploração)
 
 ---
 
@@ -24,11 +22,58 @@ Nesta aula, vamos praticar:
 - Como uma URL é associada a uma view;
 - Como separar as rotas do projeto das rotas de uma aplicação;
 - Como uma view recebe `request` e retorna uma resposta;
-- Como ler parâmetros da URL, como o identificador de um item;
+- Como ler parâmetros da URL, como o identificador de um livro;
 - Como renderizar um template e enviar dados em seu contexto;
-- Como implementar a mesma listagem com FBV e CBV.
+- Como implementar uma FBV e uma CBV em páginas com responsabilidades diferentes.
 
-> **Pré-requisito:** este repositório já possui o projeto `meu_projeto`, o app `core`, o model `Item` e as migrações da aula anterior. Os comandos abaixo devem ser executados no diretório que contém `manage.py`.
+> **Importante — modelos usados nesta aula:** substituiremos as classes de modelo anteriores pelas classes `Livro` e `Autor`. Para esta aula, utilize **somente essas duas classes**: não mantenha nem acrescente o antigo model `Item` ao exemplo. `Livro` possui uma relação com `Autor`. A migração altera a estrutura do banco e não transfere automaticamente dados antigos de `Item` para `Livro`; faça backup dos dados importantes antes de aplicá-la. Os comandos abaixo devem ser executados no diretório que contém `manage.py`.
+
+As únicas classes de modelo usadas nesta aula são:
+
+```python
+from django.db import models
+
+
+class Livro(models.Model):
+    titulo = models.CharField(max_length=100)
+    descricao = models.TextField(blank=True)
+    autor = models.ForeignKey(
+        "Autor",
+        on_delete=models.CASCADE,
+        related_name="livros",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.titulo
+
+
+class Autor(models.Model):
+    nome = models.CharField(max_length=100)
+    registro = models.CharField(max_length=6, primary_key=True)
+
+    def __str__(self):
+        return self.nome
+```
+
+**Relembrando os models:**
+
+- `models.Model` é a classe base dos models do Django.
+- `CharField` armazena texto curto; `max_length=100` define o limite do título e do nome.
+- `TextField` armazena texto longo; `blank=True` permite deixar a descrição vazia nos formulários.
+- `ForeignKey` relaciona cada livro a um autor. `on_delete=models.CASCADE` faz com que a exclusão do autor também exclua seus livros; `related_name="livros"` permite acessar os livros de um autor como `autor.livros`.
+- `DateTimeField(auto_now_add=True)` registra automaticamente a data e hora em que o livro foi criado.
+- Em `Autor`, `primary_key=True` define `registro` como chave primária, em vez de usar um ID numérico gerado pelo Django.
+- `__str__()` define a representação textual de cada registro, usada, por exemplo, no Admin.
+
+Depois de substituir os models anteriores por `Livro` e `Autor`, gere e aplique as migrações antes de começar os testes com o servidor:
+
+```bash
+python manage.py makemigrations core
+python manage.py migrate
+```
+
+`makemigrations` cria arquivos de migração a partir dos models atuais; `migrate` aplica esses arquivos ao banco de dados. A migração altera a estrutura do banco e não transfere automaticamente dados antigos de `Item` para `Livro`; faça backup dos dados importantes antes de aplicá-la.
 
 ---
 
@@ -36,10 +81,10 @@ Nesta aula, vamos praticar:
 
 O caminho de uma página no Django pode ser resumido assim:
 
-1. O navegador envia uma requisição HTTP para um endereço, por exemplo `/itens/`.
+1. O navegador envia uma requisição HTTP para um endereço, por exemplo `/autores/`.
 2. O URLconf do projeto (`meu_projeto/urls.py`) procura uma rota correspondente.
 3. A rota encaminha a requisição para uma view do app `core`.
-4. A view pode consultar o model `Item` e preparar dados.
+4. A view pode consultar os models `Livro` e `Autor` e preparar dados.
 5. A view retorna uma resposta HTTP, frequentemente renderizando um template.
 6. O Django envia a resposta ao navegador.
 
@@ -71,7 +116,9 @@ urlpatterns = [
 
 ### 3.2. URLs do app
 
-Crie o arquivo `core/urls.py`:
+Vamos montar este arquivo em etapas, acrescentando cada rota somente quando sua view e seu template estiverem prontos.
+
+Comece por `core/urls.py` com a rota raiz:
 
 ```python
 from django.urls import path
@@ -82,220 +129,318 @@ app_name = "core"
 
 urlpatterns = [
     path("", views.inicio, name="inicio"),
-    path("itens/", views.lista_itens, name="lista_itens"),
-    path("itens/cbv/", views.ItemListView.as_view(), name="lista_itens_cbv"),
-    path("itens/<int:pk>/", views.detalhe_item, name="detalhe_item"),
 ]
 ```
 
-**Elementos importantes:**
+**Linha a linha:**
 
-- `path()` associa um padrão de URL a uma view.
-- `name` dá um nome reutilizável à rota.
-- `<int:pk>` captura um número inteiro e passa seu valor para a view pelo argumento `pk`.
-- `app_name` cria o namespace `core`, evitando colisões de nomes com outros apps.
-- `ItemListView.as_view()` adapta uma CBV para que possa ser chamada como view pelo sistema de URLs.
-
-Use os nomes das rotas em vez de repetir endereços escritos manualmente. Por exemplo, `reverse("core:lista_itens")` em Python ou `{% url 'core:lista_itens' %}` em um template.
+- `from django.urls import path` importa a função que declara padrões de URL.
+- `from . import views` importa o módulo `views.py` do mesmo app.
+- `app_name = "core"` define o namespace das rotas, usado ao referenciá-las nos templates.
+- `urlpatterns` é a lista que o Django percorre para encontrar uma rota.
+- `path("", views.inicio, name="inicio")` associa a raiz do site (`""`, isto é, `/`) à view `inicio`.
+- `name="inicio"` dá um nome estável à rota; os templates podem gerar seu endereço pelo nome.
 
 ---
 
-## 🧩 4. Criando as views
+## 🪜 4. Construindo a aplicação passo a passo
 
-Edite `core/views.py`:
+Faça os passos nesta ordem. Ao fim de cada etapa, teste no navegador antes de acrescentar a próxima parte.
+
+### Passo 1 — Página inicial com uma FBV
+
+#### 1.1. Crie a view inicial
+
+Em `core/views.py`, comece somente com:
 
 ```python
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
+
+
+def inicio(request):
+    return render(request, "core/inicio.html")
+```
+
+**Linha a linha:**
+
+- `from django.shortcuts import render` importa o atalho que renderiza um template e devolve uma resposta HTTP.
+- `def inicio(request):` declara uma função Python chamada `inicio`. O Django passa a requisição HTTP atual no parâmetro `request`.
+- `render(request, "core/inicio.html")` procura e renderiza o template indicado, usando essa requisição.
+- O retorno de `render()` é enviado pelo Django ao navegador como resposta.
+
+Esta é uma **Function-Based View (FBV)** porque o comportamento está definido diretamente em uma função. Uma FBV é útil quando queremos controlar explicitamente o que acontece ao processar a requisição.
+
+#### 1.2. Crie o template inicial
+
+Crie `core/templates/core/inicio.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Início | Aula Django</title>
+</head>
+<body>
+    <main>
+        <h1>Views e URLs no Django</h1>
+        <p>Esta página é atendida por uma Function-Based View.</p>
+    </main>
+</body>
+</html>
+```
+
+O diretório `templates/core/` organiza os templates do app. Como `APP_DIRS = True` está habilitado nas configurações, o Django procura templates dentro dos apps. Neste primeiro passo, ainda não incluímos um link para autores: essa rota só será criada no passo seguinte.
+
+#### 1.3. Teste o que foi adicionado
+
+No terminal, na pasta que contém `manage.py`, inicie o servidor:
+
+```bash
+python manage.py runserver
+```
+
+Abra [http://127.0.0.1:8000/](http://127.0.0.1:8000/). A página deve exibir o título e a mensagem da FBV. O Admin continua disponível em [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/).
+
+Se o servidor continuar aberto, o Django recarrega as alterações de código automaticamente. Interrompa-o com `Ctrl+C` apenas se precisar encerrar o processo.
+
+---
+
+### Passo 2 — Listagem de autores com uma CBV
+
+Agora vamos acrescentar a rota, a view e seu template. A página inicial ganha o link para autores somente depois que essa rota existir.
+
+#### 2.1. Adicione a rota `autores/`
+
+Atualize `core/urls.py`:
+
+```python
+from django.urls import path
+
+from . import views
+
+app_name = "core"
+
+urlpatterns = [
+    path("", views.inicio, name="inicio"),
+    path("autores/", views.AutorListView.as_view(), name="lista_autores"),
+]
+```
+
+`path("autores/", ...)` corresponde ao endereço `/autores/`. `views.AutorListView.as_view()` transforma a classe baseada em view numa chamada que o sistema de URLs pode executar. O nome `lista_autores` identifica a rota, e o namespace completo usado nos templates será `core:lista_autores`.
+
+#### 2.2. Adicione a CBV
+
+Atualize `core/views.py` para incluir a importação de `ListView` e `Autor`, e a classe:
+
+```python
+from django.shortcuts import render
 from django.views.generic import ListView
 
-from .models import Item
+from .models import Autor
 
 
 def inicio(request):
     return render(request, "core/inicio.html")
 
 
-def lista_itens(request):
-    itens = Item.objects.all().order_by("-criado_em", "-pk")
-    return render(request, "core/item_list.html", {"itens": itens})
-
-
-def detalhe_item(request, pk):
-    item = get_object_or_404(Item, pk=pk)
-    return render(request, "core/item_detail.html", {"item": item})
-
-
-class ItemListView(ListView):
-    model = Item
-    template_name = "core/item_list.html"
-    context_object_name = "itens"
-    ordering = ("-criado_em", "-pk")
+class AutorListView(ListView):
+    model = Autor
+    template_name = "core/autor_list.html"
+    context_object_name = "autores"
+    ordering = ("nome", "registro")
 ```
 
-### 4.1. Function-Based Views
+**O que cada parte configura:**
 
-Uma FBV é uma função Python. Ela recebe o objeto `request` e deve retornar uma resposta HTTP. A função `render()` combina uma requisição, um template e, opcionalmente, um contexto:
+- `ListView` é uma **Class-Based View (CBV)** genérica do Django para listar objetos.
+- `class AutorListView(ListView):` cria uma classe de view especializada a partir de `ListView`.
+- `model = Autor` informa qual model será consultado para montar a lista.
+- `template_name` escolhe o template que exibirá a resposta.
+- `context_object_name = "autores"` define o nome da variável que o template usará para percorrer a lista.
+- `ordering` pede uma ordenação pelo nome e, em caso de empate, pelo registro.
+- Diferente da FBV inicial, não escrevemos manualmente uma consulta nem chamamos `render()`: a classe genérica cuida do fluxo comum de listagem.
+
+#### 2.3. Crie o template de autores
+
+Crie `core/templates/core/autor_list.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autores | Aula Django</title>
+</head>
+<body>
+    <main>
+        <h1>Autores cadastrados</h1>
+        <p>Esta página é atendida por uma CBV.</p>
+        <a href="{% url 'core:inicio' %}">Início</a>
+
+        {% if autores %}
+            <ul>
+                {% for autor in autores %}
+                    <li>
+                        <strong>{{ autor.nome }}</strong> ({{ autor.registro }})
+                        <ul>
+                            {% for livro in autor.livros.all %}
+                                <li>{{ livro.titulo }}</li>
+                            {% empty %}
+                                <li>Este autor ainda não possui livros cadastrados.</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nenhum autor cadastrado. Crie um pelo painel admin.</p>
+        {% endif %}
+    </main>
+</body>
+</html>
+```
+
+`{% if autores %}` verifica se a lista contém resultados. `{% for autor in autores %}` percorre-a; `{{ autor.nome }}` e `{{ autor.registro }}` exibem os campos. `autor.livros.all` segue a relação inversa `related_name="livros"` definida no model `Livro`. O bloco `{% empty %}` fornece uma alternativa quando aquele autor ainda não tem livros.
+
+Repare que, por enquanto, `{{ livro.titulo }}` exibe apenas texto. Ainda não há uma rota de detalhe de livro para o link apontar.
+
+#### 2.4. Conecte a página inicial e teste
+
+Agora que `lista_autores` existe, acrescente o link ao `core/templates/core/inicio.html`:
+
+```html
+<nav aria-label="Navegação principal">
+    <ul>
+        <li><a href="{% url 'core:lista_autores' %}">Listar autores</a></li>
+    </ul>
+</nav>
+```
+
+O `{% url 'core:lista_autores' %}` encontra o endereço pela combinação do namespace `core` com o nome da rota `lista_autores`; assim, não precisamos escrever manualmente `/autores/`.
+
+Com o servidor em execução, atualize a página inicial e clique em **Listar autores**, ou abra [http://127.0.0.1:8000/autores/](http://127.0.0.1:8000/autores/). Cadastre autores e livros no Admin para observar a lista e a relação entre eles.
+
+---
+
+### Passo 3 — Detalhe do livro com uma FBV e parâmetro na URL
+
+Por último, criaremos a rota de detalhe sob o prefixo `livros/`. O identificador capturado na URL permite exibir um livro específico. Depois dessa rota existir, transformaremos o título na lista de autores em um link.
+
+#### 3.1. Adicione a rota de detalhe
+
+Inclua esta linha em `urlpatterns` de `core/urls.py`:
 
 ```python
-def lista_itens(request):
-    itens = Item.objects.all().order_by("-criado_em", "-pk")
-    return render(request, "core/item_list.html", {"itens": itens})
+path("livros/<int:pk>/", views.detalhe_livro, name="detalhe_livro"),
 ```
 
-Nesse exemplo, `itens` é disponibilizado no template com a chave `"itens"`. A consulta usa o ORM já introduzido na aula de Models e ORM.
+`<int:pk>` é um conversor de caminho: ele aceita um número inteiro e o passa à view como argumento `pk`. Por exemplo, `/livros/3/` chama `detalhe_livro` com `pk=3`. O `name` permite criar links para essa rota sem montar o endereço manualmente.
 
-Na página de detalhes, `get_object_or_404()` busca o registro pela chave primária. Se não houver um item correspondente, o Django retorna uma resposta **404 — Not Found**.
+#### 3.2. Adicione a FBV de detalhe
 
-### 4.2. Class-Based Views
-
-Uma CBV organiza o comportamento em uma classe. `ListView` é uma view genérica do Django que já implementa a lógica comum de listar objetos:
+Atualize `core/views.py` com a importação de `get_object_or_404` e `Livro`, além da função:
 
 ```python
-class ItemListView(ListView):
-    model = Item
-    template_name = "core/item_list.html"
-    context_object_name = "itens"
-    ordering = ("-criado_em", "-pk")
+from django.shortcuts import get_object_or_404, render
+from django.views.generic import ListView
+
+from .models import Autor, Livro
+
+
+def inicio(request):
+    return render(request, "core/inicio.html")
+
+
+def detalhe_livro(request, pk):
+    livro = get_object_or_404(Livro, pk=pk)
+    return render(request, "core/livro.html", {"livro": livro})
+
+
+class AutorListView(ListView):
+    model = Autor
+    template_name = "core/autor_list.html"
+    context_object_name = "autores"
+    ordering = ("nome", "registro")
 ```
 
-Com poucas configurações, `ListView` consulta o model, escolhe o template e fornece a lista no contexto. Nesta aula, as rotas `/itens/` e `/itens/cbv/` renderizam a mesma tela e os mesmos dados; a primeira usa a FBV `lista_itens`, e a segunda usa `ItemListView`.
+**O que foi acrescentado em relação à FBV `inicio`:**
 
----
+- `get_object_or_404` busca um objeto e retorna uma resposta HTTP 404 se ele não existir.
+- `Livro` é importado de `core.models`; `Autor` permanece importado porque a CBV continua listando esse model.
+- O parâmetro `pk` recebe o inteiro capturado no padrão da URL.
+- `Livro.objects` é o gerenciador de consultas do model `Livro`; `get_object_or_404(Livro, pk=pk)` procura o livro cuja chave primária corresponde ao valor recebido.
+- `render()` continua gerando a resposta com um template, mas agora recebe um dicionário de contexto: `{"livro": livro}` disponibiliza o objeto no template com o nome `livro`.
 
-## 🖼️ 5. Criando os templates
+#### 3.3. Crie o template do livro
 
-Com `APP_DIRS = True` nas configurações do projeto, o Django procura templates dentro dos apps. Crie esta estrutura:
-
-```text
-core/
-└── templates/
-    └── core/
-        ├── inicio.html
-        ├── item_list.html
-        └── item_detail.html
-```
-
-### `core/templates/core/inicio.html`
+Crie `core/templates/core/livro.html`:
 
 ```html
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Início | Aula Django</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ livro.titulo }} | Aula Django</title>
 </head>
 <body>
-    <h1>Views e URLs no Django</h1>
-    <p>Esta página é atendida por uma Function-Based View.</p>
-    <a href="{% url 'core:lista_itens' %}">Listar itens (FBV)</a>
-    <a href="{% url 'core:lista_itens_cbv' %}">Listar itens (CBV)</a>
+    <main>
+        <h1>{{ livro.titulo }}</h1>
+        <p>{{ livro.descricao|default:"O livro não possui descrição." }}</p>
+        <p>Autor: {{ livro.autor.nome }}</p>
+        <p>Adicionado em: {{ livro.criado_em|date:"d/m/Y H:i" }}</p>
+        <p>Esta página é atendida por uma Function-Based View.</p>
+        <a href="{% url 'core:lista_autores' %}">Voltar para a lista de autores</a>
+    </main>
 </body>
 </html>
 ```
 
-### `core/templates/core/item_list.html`
+`{{ livro.titulo }}` e as demais expressões acessam os valores enviados no contexto. O filtro `default` fornece um texto caso a descrição esteja vazia. O filtro `date` formata a data de criação.
+
+#### 3.4. Transforme o título em link e teste
+
+Volte a `core/templates/core/autor_list.html` e substitua:
 
 ```html
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Itens | Aula Django</title>
-</head>
-<body>
-    <h1>Itens cadastrados</h1>
-    <p>Esta página pode ser atendida por uma FBV ou por uma CBV.</p>
-
-    <a href="{% url 'core:lista_itens' %}">Ver com FBV</a>
-    <a href="{% url 'core:lista_itens_cbv' %}">Ver com CBV</a>
-    <a href="{% url 'core:inicio' %}">Início</a>
-
-    {% if itens %}
-        <ul>
-            {% for item in itens %}
-                <li>
-                    <a href="{% url 'core:detalhe_item' item.pk %}">{{ item.titulo }}</a>
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Nenhum item cadastrado. Crie um pelo painel administrativo.</p>
-    {% endif %}
-</body>
-</html>
+{{ livro.titulo }}
 ```
 
-### `core/templates/core/item_detail.html`
+por:
 
 ```html
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ item.titulo }} | Aula Django</title>
-</head>
-<body>
-    <h1>{{ item.titulo }}</h1>
-    <p>{{ item.descricao|default:"Este item não possui descrição." }}</p>
-    <p>Adicionado em: {{ item.criado_em|date:"d/m/Y H:i" }}</p>
-    <a href="{% url 'core:lista_itens' %}">Voltar para a lista</a>
-</body>
-</html>
+<a href="{% url 'core:detalhe_livro' livro.pk %}">{{ livro.titulo }}</a>
 ```
 
-O conteúdo desses arquivos já está criado neste repositório. As tags `{% url %}` resolvem rotas pelo nome e as tags `{{ ... }}` exibem valores do contexto.
+Agora o nome da rota `core:detalhe_livro` gera o endereço do detalhe e `livro.pk` fornece o identificador do livro atual do loop. Clique em um título na lista de autores; a página de detalhes deve mostrar título, descrição, autor e data. Acesse também um ID inexistente, como `/livros/9999/`, e confirme que o Django responde com 404.
 
 ---
 
-## ▶️ 6. Executando e testando
-
-Se ainda não estiver com o ambiente virtual ativado, siga as instruções do [README principal](./README.md). No terminal, na pasta do projeto:
-
-```bash
-python manage.py migrate
-python manage.py runserver
-```
-
-Abra as páginas:
-
-| Funcionalidade | URL |
-|---|---|
-| Página inicial | [http://127.0.0.1:8000/](http://127.0.0.1:8000/) |
-| Listagem com FBV | [http://127.0.0.1:8000/itens/](http://127.0.0.1:8000/itens/) |
-| Listagem com CBV | [http://127.0.0.1:8000/itens/cbv/](http://127.0.0.1:8000/itens/cbv/) |
-| Admin | [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/) |
-
-Cadastre um ou mais `Item` no Admin para visualizar registros nas listas. Clique em um título para abrir sua página de detalhes. Um identificador que não existe, como `/itens/9999/`, deve resultar em uma página 404.
-
-Para executar os testes automatizados das rotas e views:
-
-```bash
-python manage.py test core
-```
-
-Os testes verificam as respostas HTTP, templates, itens apresentados pelas duas implementações da listagem e o caso de detalhe inexistente.
-
----
-
-## ⚖️ 7. FBV e CBV: diferença prática
+## ⚖️ 5. Revisão: FBV e CBV
 
 | Aspecto | FBV | CBV |
 |---|---|---|
-| Forma | Função que recebe `request` | Classe que herda de uma view |
-| Entrada HTTP | A função controla explicitamente o fluxo | O método HTTP é encaminhado pela classe base |
-| Melhor para | Lógica curta ou muito específica | Comportamentos comuns e reutilizáveis |
-| Exemplo neste app | `lista_itens(request)` | `ItemListView(ListView)` |
-| Rota | `path("itens/", views.lista_itens, ...)` | `path("itens/cbv/", ItemListView.as_view(), ...)` |
+| Forma | Função Python que recebe `request` | Classe que herda de uma view |
+| Exemplo desta aula | `inicio(request)` e `detalhe_livro(request, pk)` | `AutorListView(ListView)` |
+| Como definimos o comportamento | Escrevemos explicitamente a busca, o contexto e a resposta | Configuramos atributos; a classe genérica executa a listagem |
+| Rota | `path("livros/<int:pk>/", views.detalhe_livro, ...)` | `path("autores/", views.AutorListView.as_view(), ...)` |
 
-Nenhuma abordagem é sempre melhor. FBVs costumam ser diretas para iniciantes e para regras específicas. CBVs genéricas reduzem código repetitivo em operações comuns, como listar ou exibir um objeto. Escolha a abordagem que deixa o comportamento mais claro para o caso.
+Uma FBV não é necessariamente melhor ou pior que uma CBV. A FBV deixa explícita a sequência de passos e é conveniente para comportamentos específicos. A CBV genérica reduz código repetitivo quando a operação corresponde a um padrão comum, como listar objetos. Neste exemplo, as duas abordagens atendem páginas diferentes para manter a aula objetiva; compare como cada tipo é declarado e conectado à URL.
 
 ---
 
-## 🧪 8. Exercícios para a turma
+## 🧪 6. Exercício e exploração
 
-1. Inclua na FBV de lista_itens a descrição de cada item.
-2. Altere a view detalhe_item para retornar uma mensagem e exiba-a abaixo da descrição do item no template item_detail.
-3. Adicione uma rota `/sobre/` com uma view de um tipo a sua escolha e um template próprio respectivo.
-4. Compare a quantidade de linhas de código necessária para acrescentar uma funcionalidade simples à FBV e à CBV.
+Use o tempo final para perguntas e para os alunos experimentarem o conteúdo:
+
+1. Peça aos alunos que criem uma rota simples `/sobre/` e escolham se farão a view como FBV ou CBV.
+2. Convide-os a alterar a ordenação de autores ou a exibição dos livros relacionados.
+3. Testem juntos o que acontece quando o ID do livro existe e quando não existe.
+4. Se houver tempo, proponha replicar uma das páginas com o outro tipo de view e discutir as diferenças.
+
+O objetivo é praticar o fluxo **URL → view → template → resposta**, esclarecer dúvidas e permitir que os alunos “brinquem” com o código sem a pressão de acrescentar muitas páginas repetidas.
 
 ---
