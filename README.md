@@ -2,20 +2,20 @@
 
 Este guia dá continuidade à sequência de estudos de Django. Nesta aula, vamos entender como o Django recebe uma requisição, encontra uma rota e executa uma **view** para devolver uma resposta.
 
-Ao final, o projeto terá uma página inicial, uma listagem de autores feita com **Class-Based View (CBV)** e uma página de detalhes de livro feita com **Function-Based View (FBV)**.
+No decorrer da prática, discutiremos acerca de **Class-Based Views (CBV)** e **Function-Based Views (FBV)**, criando uma versão primitiva da interface do gerenciador da biblioteca
 
 ## 📚 Sumário
 
-- [🎯 1. Objetivos da aula](#-1-objetivos-da-aula)
-- [🔁 2. Fluxo de uma requisição](#-2-fluxo-de-uma-requisição)
-- [🧭 3. Configurando as URLs](#-3-configurando-as-urls)
-- [🪜 4. Construindo a aplicação passo a passo](#-4-construindo-a-aplicação-passo-a-passo)
-- [⚖️ 5. Revisão: FBV e CBV](#️-5-revisão-fbv-e-cbv)
-- [🧪 6. Exercício e exploração](#-6-exercício-e-exploração)
+- [1. Introdução e Atualização](#-1-introdução-e-atualização)
+- [2. Teoria do fluxo de uma requisição](#-2-teoria-do-fluxo-de-uma-requisição)
+- [3. Configurando as URLs](#-3-configurando-as-urls)
+- [4. Construindo a aplicação passo a passo](#-4-construindo-a-aplicação-passo-a-passo)
+- [5. Revisão](#️-5-revisão)
+- [6. Exercício e exploração](#-6-exercício-e-exploração)
 
 ---
 
-## 🎯 1. Objetivos da aula
+## 🎯 1. Introdução e Atualização
 
 Nesta aula, vamos praticar:
 
@@ -26,9 +26,8 @@ Nesta aula, vamos praticar:
 - Como renderizar um template e enviar dados em seu contexto;
 - Como implementar uma FBV e uma CBV em páginas com responsabilidades diferentes.
 
-> **Importante — modelos usados nesta aula:** substituiremos as classes de modelo anteriores pelas classes `Livro` e `Autor`. Para esta aula, utilize **somente essas duas classes**: não mantenha nem acrescente o antigo model `Item` ao exemplo. `Livro` possui uma relação com `Autor`. A migração altera a estrutura do banco e não transfere automaticamente dados antigos de `Item` para `Livro`; faça backup dos dados importantes antes de aplicá-la. Os comandos abaixo devem ser executados no diretório que contém `manage.py`.
-
-As únicas classes de modelo usadas nesta aula são:
+> **Importante — modelos usados nesta aula:** substituiremos as classes de modelo anteriores pelas classes `Livro` e `Autor`. Para esta aula, utilize **somente essas duas classes**: não mantenha nem acrescente o antigo model `Item` ao exemplo. `Livro` possui uma relação com `Autor`. Altere também o `admin.py` para que registre apenas essas classes.
+> A migração altera a estrutura do banco e não transfere automaticamente dados antigos de `Item` para `Livro`; faça backup dos dados importantes antes de aplicá-la.
 
 ```python
 from django.db import models
@@ -73,26 +72,28 @@ python manage.py makemigrations core
 python manage.py migrate
 ```
 
-`makemigrations` cria arquivos de migração a partir dos models atuais; `migrate` aplica esses arquivos ao banco de dados. A migração altera a estrutura do banco e não transfere automaticamente dados antigos de `Item` para `Livro`; faça backup dos dados importantes antes de aplicá-la.
-
 ---
 
-## 🔁 2. Fluxo de uma requisição
+## 🔁 2. Teoria do Fluxo de uma requisição
 
+Anteriormente, com Node.js, compreendemos que a definição de cada rota era acompanhada com o req, res e as vezes next, processando tudo nela mesma.
+```text
+Navegador → URL com a Rota → Reconhecimento da rota → Processamento → Resposta
+```
 O caminho de uma página no Django pode ser resumido assim:
 
 1. O navegador envia uma requisição HTTP para um endereço, por exemplo `/autores/`.
-2. O URLconf do projeto (`meu_projeto/urls.py`) procura uma rota correspondente.
+2. O configurador do projeto (`meu_projeto/urls.py`) procura uma rota correspondente.
 3. A rota encaminha a requisição para uma view do app `core`.
 4. A view pode consultar os models `Livro` e `Autor` e preparar dados.
-5. A view retorna uma resposta HTTP, frequentemente renderizando um template.
+5. A view retorna uma resposta HTTP.
 6. O Django envia a resposta ao navegador.
 
 ```text
 Navegador → URL do projeto → URL do app → View → Model/Template → Resposta
 ```
 
-**View não é o arquivo HTML.** A view coordena o processamento da requisição e escolhe a resposta. O template é usado para apresentar os dados.
+**View não é o arquivo HTML.** A view é um algorítimo que coordena o processamento da requisição e escolhe a resposta. O template é usado para apresentar os dados.
 
 ---
 
@@ -116,7 +117,7 @@ urlpatterns = [
 
 ### 3.2. URLs do app
 
-Vamos montar este arquivo em etapas, acrescentando cada rota somente quando sua view e seu template estiverem prontos.
+Vamos montar este arquivo por partes.
 
 Comece por `core/urls.py` com a rota raiz:
 
@@ -132,10 +133,8 @@ urlpatterns = [
 ]
 ```
 
-**Linha a linha:**
-
 - `from django.urls import path` importa a função que declara padrões de URL.
-- `from . import views` importa o módulo `views.py` do mesmo app.
+- `from . import views` importa o módulo `views.py`.
 - `app_name = "core"` define o namespace das rotas, usado ao referenciá-las nos templates.
 - `urlpatterns` é a lista que o Django percorre para encontrar uma rota.
 - `path("", views.inicio, name="inicio")` associa a raiz do site (`""`, isto é, `/`) à view `inicio`.
@@ -161,10 +160,8 @@ def inicio(request):
     return render(request, "core/inicio.html")
 ```
 
-**Linha a linha:**
-
 - `from django.shortcuts import render` importa o atalho que renderiza um template e devolve uma resposta HTTP.
-- `def inicio(request):` declara uma função Python chamada `inicio`. O Django passa a requisição HTTP atual no parâmetro `request`.
+- `def inicio(request):` declara uma função Python chamada `inicio` passando a requisição HTTP atual no parâmetro `request`.
 - `render(request, "core/inicio.html")` procura e renderiza o template indicado, usando essa requisição.
 - O retorno de `render()` é enviado pelo Django ao navegador como resposta.
 
@@ -191,9 +188,9 @@ Crie `core/templates/core/inicio.html`:
 </html>
 ```
 
-O diretório `templates/core/` organiza os templates do app. Como `APP_DIRS = True` está habilitado nas configurações, o Django procura templates dentro dos apps. Neste primeiro passo, ainda não incluímos um link para autores: essa rota só será criada no passo seguinte.
+O diretório `templates/core/` organiza os templates do app. Como `APP_DIRS = True` está habilitado nas configurações, o Django procura templates dentro dos apps.
 
-#### 1.3. Teste o que foi adicionado
+#### 1.3. Teste
 
 No terminal, na pasta que contém `manage.py`, inicie o servidor:
 
@@ -201,7 +198,7 @@ No terminal, na pasta que contém `manage.py`, inicie o servidor:
 python manage.py runserver
 ```
 
-Abra [http://127.0.0.1:8000/](http://127.0.0.1:8000/). A página deve exibir o título e a mensagem da FBV. O Admin continua disponível em [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/).
+A página deve exibir o título e a mensagem da FBV.
 
 Se o servidor continuar aberto, o Django recarrega as alterações de código automaticamente. Interrompa-o com `Ctrl+C` apenas se precisar encerrar o processo.
 
@@ -209,7 +206,7 @@ Se o servidor continuar aberto, o Django recarrega as alterações de código au
 
 ### Passo 2 — Listagem de autores com uma CBV
 
-Agora vamos acrescentar a rota, a view e seu template. A página inicial ganha o link para autores somente depois que essa rota existir.
+Agora vamos acrescentar mais uma rota, view e seu template. Desta vez, não faremos a view do jeito anterior.
 
 #### 2.1. Adicione a rota `autores/`
 
@@ -251,8 +248,6 @@ class AutorListView(ListView):
     context_object_name = "autores"
     ordering = ("nome", "registro")
 ```
-
-**O que cada parte configura:**
 
 - `ListView` é uma **Class-Based View (CBV)** genérica do Django para listar objetos.
 - `class AutorListView(ListView):` cria uma classe de view especializada a partir de `ListView`.
@@ -305,29 +300,25 @@ Crie `core/templates/core/autor_list.html`:
 
 `{% if autores %}` verifica se a lista contém resultados. `{% for autor in autores %}` percorre-a; `{{ autor.nome }}` e `{{ autor.registro }}` exibem os campos. `autor.livros.all` segue a relação inversa `related_name="livros"` definida no model `Livro`. O bloco `{% empty %}` fornece uma alternativa quando aquele autor ainda não tem livros.
 
-Repare que, por enquanto, `{{ livro.titulo }}` exibe apenas texto. Ainda não há uma rota de detalhe de livro para o link apontar.
+Repare que, por enquanto, `{{ livro.titulo }}` exibe apenas texto, mas futuramente podemos adicionar uma rota para acessar os detalhes do livro!
 
 #### 2.4. Conecte a página inicial e teste
 
-Agora que `lista_autores` existe, acrescente o link ao `core/templates/core/inicio.html`:
+Agora que `lista_autores` existe, podemos acrescentar o link ao `core/templates/core/inicio.html`:
 
 ```html
-<nav aria-label="Navegação principal">
-    <ul>
-        <li><a href="{% url 'core:lista_autores' %}">Listar autores</a></li>
-    </ul>
-</nav>
+<a href="{% url 'core:lista_autores' %}">Listar autores</a>
 ```
 
-O `{% url 'core:lista_autores' %}` encontra o endereço pela combinação do namespace `core` com o nome da rota `lista_autores`; assim, não precisamos escrever manualmente `/autores/`.
+O `{% url 'core:lista_autores' %}` encontra o endereço pela combinação do namespace `core` com o nome da rota `lista_autores`.
 
-Com o servidor em execução, atualize a página inicial e clique em **Listar autores**, ou abra [http://127.0.0.1:8000/autores/](http://127.0.0.1:8000/autores/). Cadastre autores e livros no Admin para observar a lista e a relação entre eles.
+Com o servidor em execução, atualize a página inicial e clique em **Listar autores**. Cadastre alguns autores e livros no Admin para observar a lista e a relação entre eles.
 
 ---
 
 ### Passo 3 — Detalhe do livro com uma FBV e parâmetro na URL
 
-Por último, criaremos a rota de detalhe sob o prefixo `livros/`. O identificador capturado na URL permite exibir um livro específico. Depois dessa rota existir, transformaremos o título na lista de autores em um link.
+Por último, criaremos uma rota de detalhe sob o prefixo `livros/`. O identificador capturado na URL permite exibir um livro específico. Depois dessa rota existir, transformaremos o título na lista de autores em um link.
 
 #### 3.1. Adicione a rota de detalhe
 
@@ -434,13 +425,8 @@ Uma FBV não é necessariamente melhor ou pior que uma CBV. A FBV deixa explíci
 
 ## 🧪 6. Exercício e exploração
 
-Use o tempo final para perguntas e para os alunos experimentarem o conteúdo:
-
-1. Peça aos alunos que criem uma rota simples `/sobre/` e escolham se farão a view como FBV ou CBV.
-2. Convide-os a alterar a ordenação de autores ou a exibição dos livros relacionados.
-3. Testem juntos o que acontece quando o ID do livro existe e quando não existe.
-4. Se houver tempo, proponha replicar uma das páginas com o outro tipo de view e discutir as diferenças.
-
-O objetivo é praticar o fluxo **URL → view → template → resposta**, esclarecer dúvidas e permitir que os alunos “brinquem” com o código sem a pressão de acrescentar muitas páginas repetidas.
+1. Crie uma rota da forma que preferir e escolha se será uma view FBV ou CBV.
+2. Agora crie uma segunda rota replicando a anterior mas sendo do tipo de view não escolhido. Compare os usos
+3. Altere a ordenação de autores e ou dos livros.
 
 ---
