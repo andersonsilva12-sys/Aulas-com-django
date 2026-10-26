@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ item.titulo }} | Aula Django</title>
+</head>
+<body>
+    <main>
+        <h1>{{ item.titulo }}</h1>
+        <p>{{ item.descricao|default:"Este item não possui descrição." }}</p>
+        <p>Adicionado em: {{ item.criado_em|date:"d/m/Y H:i" }}</p>
+        <a href="{% url 'core:lista_itens' %}">Voltar para a lista</a>
+    </main>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Itens | Aula Django</title>
+</head>
+<body>
+    <main>
+        <h1>Itens cadastrados</h1>
+        <p>Esta página pode ser atendida por uma FBV ou por uma CBV.</p>
+        <nav aria-label="Alternar implementação">
+            <a href="{% url 'core:lista_itens' %}">Ver com FBV </a>
+            <a href="{% url 'core:lista_itens_cbv' %}">Ver com CBV </a>
+            <a href="{% url 'core:inicio' %}">Início</a>
+        </nav>
+
+        {% if itens %}
+            <ul>
+                {% for item in itens %}
+                    <li>
+                        <a href="{% url 'core:detalhe_item' item.pk %}">{{ item.titulo }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nenhum item cadastrado. Crie um pelo painel administrativo.</p>
+        {% endif %}
+    </main>
+</body>
+</html>
