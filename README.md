@@ -156,7 +156,7 @@ O logout é enviado por `POST`, com CSRF. Não use um link `GET` para encerrar a
 No terminal, na pasta que contém `manage.py`, ative o ambiente e aplique as migrations do Django:
 
 ```powershell
-python -m venv .venv //se não ouver o venv
+python -m venv .venv #se não ouver o venv
 .\.venv\Scripts\Activate.ps1
 python manage.py migrate
 ```
