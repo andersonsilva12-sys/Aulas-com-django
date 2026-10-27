@@ -182,3 +182,10 @@ Entre em `/admin/` com a conta administradora. Na página de um usuário, conced
 Para acessar o Admin, o usuário precisa estar ativo e ter **Status da equipe** (`is_staff`) habilitado. Depois, entre no site com esse usuário e abra `/area-restrita/`: a mensagem sobre a permissão deve indicar que ele pode visualizar livros.
 
 Esta aula apenas demonstra a permissão no template. Em uma aplicação real, uma view que execute uma ação protegida também precisa verificar essa permissão no servidor, por exemplo com `@permission_required`.
+
+
+#EXTRA CASO PRECISE:
+
+def make_password(password, salt=None, hasher="default"): #Onde o hash da senha é aplicado
+class PBKDF2PasswordHasher(BasePasswordHasher): #Onde o algoritmo calcula o hash
+def verify(self, password, encoded): #Como o Django verifica se a senha digitada está correta
