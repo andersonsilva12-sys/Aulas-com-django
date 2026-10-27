@@ -153,18 +153,12 @@ O logout é enviado por `POST`, com CSRF. Não use um link `GET` para encerrar a
 
 ## 7. Prepare o banco e uma conta de teste
 
-No terminal, na pasta que contém `manage.py`, ative o ambiente e aplique as migrations do Django:
-
 ```powershell
-python -m venv .venv #se não ouver o venv
-.\.venv\Scripts\Activate.ps1
-python manage.py migrate
-```
-
-Se ainda não houver uma conta administradora, crie uma:
-
-```powershell
-python manage.py createsuperuser
+python -m venv .venv            # cria ambiente virtual (se não existir)
+.\.venv\Scripts\Activate.ps1    # ativa o venv no PowerShell
+python manage.py migrate        # aplica migrations (cria tabelas de auth, sessions, etc.)
+python manage.py createsuperuser # cria conta admin interativamente
+python manage.py runserver      # sobe o servidor de desenvolvimento
 ```
 
 ## 8. Execute e teste no navegador
