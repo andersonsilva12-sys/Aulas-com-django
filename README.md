@@ -158,7 +158,6 @@ python -m venv .venv            # cria ambiente virtual (se não existir)
 .\.venv\Scripts\Activate.ps1    # ativa o venv no PowerShell
 python manage.py migrate        # aplica migrations (cria tabelas de auth, sessions, etc.)
 python manage.py createsuperuser # cria conta admin interativamente
-python manage.py runserver      # sobe o servidor de desenvolvimento
 ```
 
 ## 8. Execute e teste no navegador
